@@ -1,0 +1,4 @@
+test/*.log
+test/debug.log
+test/workspace/
+test/real_workspace/
