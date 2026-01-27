@@ -224,6 +224,13 @@ is_session_idle() {
         return
     fi
 
+    # Check if Claude Code shows tasks in progress - not idle if working on tasks
+    if [ "$(has_tasks_in_progress "$session")" = "true" ]; then
+        debug_log "is_session_idle: tasks in progress, not idle"
+        echo "false"
+        return
+    fi
+
     # Capture current pane content
     local current_content=$(tmux capture-pane -p -t "$session" -S -100 2>/dev/null)
     local current_hash=$(content_hash "$current_content")
@@ -278,6 +285,29 @@ has_active_todos() {
     fi
 }
 
+# Function to check if Claude Code shows tasks in progress
+# Detects output like: "17 tasks (10 done, 6 in progress, 1 open) · ctrl+t to hide task"
+has_tasks_in_progress() {
+    local session="$1"
+
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+        echo "false"
+        return
+    fi
+
+    # Capture the bottom portion of the pane where the status line appears
+    local pane_content=$(tmux capture-pane -p -t "$session" -S -30 2>/dev/null)
+
+    # Check for task progress indicator with "in progress" count > 0
+    # Pattern: "N tasks (... X in progress ...)" where X > 0
+    if echo "$pane_content" | grep -qE '[0-9]+ tasks \([^)]*[1-9][0-9]* in progress' 2>/dev/null; then
+        debug_log "has_tasks_in_progress: found tasks in progress"
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 # Babysit functions (merged from babysit.sh)
 
 # Function to check if Claude is stuck (content-based detection)
@@ -286,6 +316,13 @@ is_claude_stuck() {
 
     if ! tmux has-session -t "$session" 2>/dev/null; then
         debug_log "is_claude_stuck: session '$session' does not exist"
+        echo "false"
+        return
+    fi
+
+    # Check if Claude Code shows tasks in progress - not stuck if working on tasks
+    if [ "$(has_tasks_in_progress "$session")" = "true" ]; then
+        debug_log "is_claude_stuck: tasks in progress, not stuck"
         echo "false"
         return
     fi
@@ -325,6 +362,13 @@ get_idle_minutes() {
     local session="$1"
 
     if ! tmux has-session -t "$session" 2>/dev/null; then
+        echo "0"
+        return
+    fi
+
+    # Check if Claude Code shows tasks in progress - not idle if working on tasks
+    if [ "$(has_tasks_in_progress "$session")" = "true" ]; then
+        debug_log "get_idle_minutes: tasks in progress, idle=0"
         echo "0"
         return
     fi
@@ -471,14 +515,25 @@ start_babysit_monitor() {
             local idle_minutes=$((idle_seconds / 60))
             local active_todos=$(count_active_todos "$session")
             local has_error=$(has_error_state "$session")
+            local tasks_running=$(has_tasks_in_progress "$session")
 
             if [ "$DEBUG_MODE" = true ]; then
-                echo "[$(date '+%Y-%m-%d %H:%M:%S')] babysit_monitor[$check_count]: idle=${idle_seconds}s (${idle_minutes}min), threshold=${BABYSIT_STUCK_THRESHOLD}s, todos=$active_todos, error=$has_error" >> "$DEBUG_FILE"
+                echo "[$(date '+%Y-%m-%d %H:%M:%S')] babysit_monitor[$check_count]: idle=${idle_seconds}s (${idle_minutes}min), threshold=${BABYSIT_STUCK_THRESHOLD}s, todos=$active_todos, tasks_running=$tasks_running, error=$has_error" >> "$DEBUG_FILE"
             fi
 
             # Only log every 10th check to reduce noise
             if [ $((check_count % 10)) -eq 1 ]; then
-                log "Babysit check #$check_count (elapsed: $((elapsed / 60))min | idle: ${idle_minutes}min | todos: $active_todos)"
+                log "Babysit check #$check_count (elapsed: $((elapsed / 60))min | idle: ${idle_minutes}min | todos: $active_todos | tasks_running: $tasks_running)"
+            fi
+
+            # If tasks are in progress, reset the idle timer - Claude is working
+            if [ "$tasks_running" = "true" ]; then
+                babysit_last_change_time=$current_time
+                if [ "$DEBUG_MODE" = true ]; then
+                    echo "[$(date '+%Y-%m-%d %H:%M:%S')] babysit_monitor[$check_count]: tasks in progress, reset idle timer" >> "$DEBUG_FILE"
+                fi
+                sleep $BABYSIT_CHECK_INTERVAL
+                continue
             fi
 
             # Decide if we need to intervene
@@ -662,6 +717,16 @@ monitor_and_auto_submit() {
         local stable_duration=$((current_time - content_stable_since))
 
         debug_log "monitor_and_auto_submit[$check_count]: stable for ${stable_duration}s (need ${timeout_seconds}s)"
+
+        # Check if Claude Code has tasks in progress - don't trigger if working
+        local tasks_running=$(has_tasks_in_progress "$session")
+        if [ "$tasks_running" = "true" ]; then
+            debug_log "monitor_and_auto_submit[$check_count]: tasks in progress, skipping auto-submit check"
+            # Reset stable timer since work is happening
+            content_stable_since=$current_time
+            sleep "$CHECK_INTERVAL"
+            continue
+        fi
 
         # Check if stable long enough
         if [ $stable_duration -ge $timeout_seconds ]; then

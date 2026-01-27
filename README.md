@@ -94,10 +94,20 @@ The script uses **content-based detection** to determine when Claude is idle:
 
 1. **MD5 Hashing**: Captures the tmux pane content and computes its hash
 2. **Change Detection**: Compares current hash with previous hash
-3. **Stability Timer**: Tracks how long content has been unchanged
-4. **Auto-Submit**: When content is stable for the timeout period, sends the continue prompt
+3. **Task Progress Detection**: Recognizes Claude Code's task status line (e.g., `17 tasks (10 done, 6 in progress, 1 open)`) as active work
+4. **Stability Timer**: Tracks how long content has been unchanged
+5. **Auto-Submit**: When content is stable for the timeout period and no tasks are in progress, sends the continue prompt
 
 This is more accurate than using tmux's `#{window_activity}` which only tracks window focus.
+
+### Task Progress Detection
+
+When Claude Code shows a task progress indicator like:
+```
+17 tasks (10 done, 6 in progress, 1 open) · ctrl+t to hide task
+```
+
+The script recognizes this as active work and will NOT consider the session idle or stuck, even if the content hash hasn't changed. This prevents unnecessary auto-submits or nudges while Claude is actively processing tasks.
 
 ### Debug Log Output
 
