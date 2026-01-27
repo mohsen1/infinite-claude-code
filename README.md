@@ -125,7 +125,7 @@ The babysit functionality is always enabled and runs in the background:
 | `--pwd DIRECTORY` | Change to directory before running Claude Code | Current directory |
 | `--wait-time MINUTES` | Wait time before considering session idle | 1 minute |
 | `--auto-submit-timeout MIN` | Inactivity timeout for auto-submit (supports fractions) | 1 minute |
-| `--no-auto-submit` | Disable auto-submit feature | Enabled |
+| `--no-auto-submit` | Disable auto-submit feature | Auto-submit ON |
 | `--continue-prompt PROMPT` | Prompt to send when session becomes idle | None |
 | `--model MODEL` | Claude model to use (haiku, sonnet, opus) | Default |
 | `--debug [FILE]` | Enable debug logging | Disabled |
