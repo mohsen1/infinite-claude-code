@@ -14,7 +14,7 @@ AUTO_SUBMIT=true
 AUTO_SUBMIT_TIMEOUT=1  # minutes before auto-submitting
 MONITOR_MODE=false
 CHECK_INTERVAL="${CLAUDE_CHECK_INTERVAL:-5}"  # seconds between checks
-CONTINUE_PROMPT=""
+CONTINUE_PROMPT="Continue"
 DEBUG_MODE=false
 DEBUG_FILE="/tmp/infinite-claude-debug.log"
 MODEL=""  # Claude model to use (e.g., haiku, sonnet, opus)
@@ -83,7 +83,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --wait-time MINUTES          Wait time in minutes to consider session idle (default: 1)"
             echo "  --auto-submit-timeout MIN    Minutes of inactivity before auto-submitting (default: 1, supports fractions like 0.5)"
             echo "  --no-auto-submit             Disable auto-submit feature"
-            echo "  --continue-prompt PROMPT     Prompt to send when session becomes idle"
+            echo "  --continue-prompt PROMPT     Prompt to send when session becomes idle (default: Continue)"
             echo "  --monitor                    Run in monitor mode only (no prompt needed)"
             echo "  --debug [FILE]               Enable debug mode, write to FILE (default: /tmp/infinite-claude-debug.log)"
             echo "  --model MODEL                Claude model to use (e.g., haiku, sonnet, opus)"

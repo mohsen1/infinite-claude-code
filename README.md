@@ -126,7 +126,7 @@ The babysit functionality is always enabled and runs in the background:
 | `--wait-time MINUTES` | Wait time before considering session idle | 1 minute |
 | `--auto-submit-timeout MIN` | Inactivity timeout for auto-submit (supports fractions) | 1 minute |
 | `--no-auto-submit` | Disable auto-submit feature | Auto-submit ON |
-| `--continue-prompt PROMPT` | Prompt to send when session becomes idle | None |
+| `--continue-prompt PROMPT` | Prompt to send when session becomes idle | Continue |
 | `--model MODEL` | Claude model to use (haiku, sonnet, opus) | Default |
 | `--debug [FILE]` | Enable debug logging | Disabled |
 | `--monitor` | Monitor mode only | Disabled |
