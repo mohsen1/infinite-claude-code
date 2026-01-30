@@ -116,9 +116,15 @@ if [ -z "$WORK_DIR" ]; then
     WORK_DIR="$LAUNCH_DIR"
 fi
 
-# Function to log messages with timestamp
+# Function to log messages with timestamp (handles buffer overflow gracefully)
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    # Retry up to 3 times with small delay if write fails
+    local retries=0
+    while ! echo "$msg" 2>/dev/null && [ $retries -lt 3 ]; do
+        sleep 0.1
+        retries=$((retries + 1))
+    done
 }
 
 # Function to write debug messages to file
